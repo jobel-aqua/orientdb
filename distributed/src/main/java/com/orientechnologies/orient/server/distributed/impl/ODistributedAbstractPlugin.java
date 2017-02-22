@@ -42,6 +42,7 @@ import com.orientechnologies.orient.core.db.*;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.exception.OConfigurationException;
+import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OClassImpl;
@@ -454,6 +455,7 @@ public abstract class ODistributedAbstractPlugin extends OServerPluginAbstract
   @Override
   public ODocument getLocalNodeConfiguration() {
     final ODocument nodeCfg = new ODocument();
+    nodeCfg.setTrackingChanges(false);
 
     nodeCfg.field("id", nodeId);
     nodeCfg.field("uuid", nodeUuid);
@@ -883,6 +885,9 @@ public abstract class ODistributedAbstractPlugin extends OServerPluginAbstract
 
             if (deploy == null || !deploy) {
               // NO AUTO DEPLOY
+              ODistributedServerLog.debug(this, nodeName, null, DIRECTION.NONE,
+                  "Skipping download of database '%s' from the cluster because autoDeploy=false", databaseName);
+
               setDatabaseStatus(nodeName, databaseName, DB_STATUS.ONLINE);
               distrDatabase.resume();
               return false;
@@ -904,6 +909,9 @@ public abstract class ODistributedAbstractPlugin extends OServerPluginAbstract
 
                 if (deploy == null || !deploy) {
                   // NO AUTO DEPLOY
+                  ODistributedServerLog.debug(this, nodeName, null, DIRECTION.NONE,
+                      "Skipping download of database '%s' from the cluster because autoDeploy=false", databaseName);
+
                   setDatabaseStatus(nodeName, databaseName, DB_STATUS.ONLINE);
                   distrDatabase.resume();
                   return false;
@@ -948,6 +956,7 @@ public abstract class ODistributedAbstractPlugin extends OServerPluginAbstract
             setDatabaseStatus(s, databaseName, ODistributedServerManager.DB_STATUS.NOT_AVAILABLE);
           }
           databaseInstalled = true;
+          distrDatabase.resume();
         }
 
         return databaseInstalled;
@@ -2001,5 +2010,34 @@ public abstract class ODistributedAbstractPlugin extends OServerPluginAbstract
   @Override
   public ODistributedConflictResolverFactory getConflictResolverFactory() {
     return conflictResolverFactory;
+  }
+
+  public static String getListeningBinaryAddress(final ODocument cfg) {
+    String url = cfg.field("publicAddress");
+
+    final Collection<Map<String, Object>> listeners = (Collection<Map<String, Object>>) cfg.field("listeners");
+    if (listeners == null)
+      throw new ODatabaseException(
+          "Cannot connect to a remote node because bad distributed configuration: missing 'listeners' array field");
+    String listenUrl = null;
+    for (Map<String, Object> listener : listeners) {
+      if ((listener.get("protocol")).equals("ONetworkProtocolBinary")) {
+        listenUrl = (String) listener.get("listen");
+        break;
+      }
+    }
+    if (url == null)
+      url = listenUrl;
+    else {
+      int pos;
+      String port;
+      if ((pos = listenUrl.lastIndexOf(":")) != -1) {
+        port = listenUrl.substring(pos + 1);
+      } else {
+        port = "2424";
+      }
+      url += ":" + port;
+    }
+    return url;
   }
 }
