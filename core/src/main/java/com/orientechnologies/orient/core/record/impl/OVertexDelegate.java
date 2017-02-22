@@ -183,12 +183,16 @@ public class OVertexDelegate implements OVertex {
 
   @Override
   public OVertexDelegate delete() {
-    Iterable<OEdge> allEdges = this.getEdges(ODirection.BOTH);
+    deleteLinks(this);
+    element.delete();
+    return this;
+  }
+
+  public static void deleteLinks(OVertexDelegate delegate) {
+    Iterable<OEdge> allEdges = delegate.getEdges(ODirection.BOTH);
     for (OEdge edge : allEdges) {
       edge.delete();
     }
-    element.delete();
-    return this;
   }
 
   protected void detachOutgointEdge(OEdge edge) {
@@ -262,11 +266,6 @@ public class OVertexDelegate implements OVertex {
   @Override
   public Optional<OEdge> asEdge() {
     return Optional.empty();
-  }
-
-  @Override
-  public boolean isDocument() {
-    return true;
   }
 
   @Override
@@ -732,8 +731,8 @@ public class OVertexDelegate implements OVertex {
         // REPLACE ALL REFS IN inVertex
         final OVertex inV = oe.getVertex(ODirection.IN);
 
-        final String inFieldName =
-            getConnectionFieldName(ODirection.IN, oe.getSchemaType().map(x->x.getName()).orElse(null), true);
+        final String inFieldName = getConnectionFieldName(ODirection.IN, oe.getSchemaType().map(x -> x.getName()).orElse(null),
+            true);
 
         replaceLinks(inV.getRecord(), inFieldName, oldIdentity, newIdentity);
       } else {
@@ -748,8 +747,8 @@ public class OVertexDelegate implements OVertex {
         // REPLACE ALL REFS IN outVertex
         final OVertex outV = oe.getVertex(ODirection.OUT);
 
-        final String outFieldName =
-            getConnectionFieldName(ODirection.OUT, oe.getSchemaType().map(x->x.getName()).orElse(null), true);
+        final String outFieldName = getConnectionFieldName(ODirection.OUT, oe.getSchemaType().map(x -> x.getName()).orElse(null),
+            true);
 
         replaceLinks(outV.getRecord(), outFieldName, oldIdentity, newIdentity);
       } else {
